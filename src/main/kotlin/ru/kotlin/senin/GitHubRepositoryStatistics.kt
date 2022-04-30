@@ -1,6 +1,7 @@
 package ru.kotlin.senin
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.kotlin.senin.GitHubRepositoryStatistics.LoadingStatus.*
@@ -87,7 +88,8 @@ class GitHubRepositoryStatistics : JFrame("GitHub Repository Statistics"), Corou
         }.setUpCancellation()
     }
 
-    private fun parseRepositoryUrl(repositoryUrl: String): Pair<String, String> = TODO("Implement me!")
+    private fun parseRepositoryUrl(repositoryUrl: String): Pair<String, String> = Pair(repositoryUrl.split('/')[3],
+        repositoryUrl.split('/')[4])
 
     private fun clearResults() {
         updateResults(emptyMap())
@@ -119,6 +121,23 @@ class GitHubRepositoryStatistics : JFrame("GitHub Repository Statistics"), Corou
     }
 
     private fun Job.setUpCancellation() {
+        setActionsStatus(newLoadingEnabled = false, cancellationEnabled = true)
+
+        val loadingJob = this
+
+        // cancel the loading job if the 'cancel' button was clicked
+        val listener = ActionListener {
+            loadingJob.cancel()
+            updateLoadingStatus(CANCELED)
+        }
+        addCancelListener(listener)
+
+        // update the status and remove the listener after the loading job is completed
+        launch {
+            loadingJob.join()
+            setActionsStatus(newLoadingEnabled = true)
+            removeCancelListener(listener)
+        }
         // TODO: make active the 'cancel' button
         // TODO: cancel the loading job if the 'cancel' button was clicked
         // TODO: update the status and remove the listener after the loading job is completed
@@ -178,7 +197,7 @@ class GitHubRepositoryStatistics : JFrame("GitHub Repository Statistics"), Corou
 
     private fun updateResults(results: Map<String, UserStatistics>) {
         // TODO: Sort results by number of commits!
-        resultsModel.setDataVector(results.map { (login, stat) ->
+        resultsModel.setDataVector(results.map {it ->it.key to it.value}.sortedByDescending { it.second.commits }.map { (login, stat) ->
             arrayOf(login, stat.commits, stat.files.size, stat.changes)
         }.toTypedArray(), columns)
     }
@@ -290,9 +309,47 @@ fun saveParameters(storedParameters: StoredParameters) {
     }
 }
 
+fun correct_date(date : String) : Boolean {
+    val lst = date.split('T')[0].split('-').joinToString("")
+    return lst >= "20210430"
+}
+
 suspend fun loadResults(
     service: GitHubService, req: RequestData,
     updateResults: suspend (Map<String, UserStatistics>, completed: Boolean) -> Unit): Unit = coroutineScope {
-    TODO("Implement me!")
+    val repos = service.getCommits(owner = req.owner, repository = req.repository).body()
+        ?.filter{
+            it.author?.type != "Bot" && it.author != null
+        } ?: listOf()
+    val channel = Channel<Map<String, UserStatistics>>()
+    repos.forEach { repo ->
+        launch {
+            channel.send(service
+                .getChanges(owner = req.owner, repository = req.repository, commitRef = repo.sha)
+                .body().let{
+                    when (it != null && it.author != null) {
+                        true -> mapOf(
+                            it.author.login to UserStatistics(1, it.files.map { it.filename }.toSet(),
+                                it.files.sumOf { it.changes })
+                        )
+                        else -> mapOf()
+                    }
+                })
+        }
+    }
+    val result : MutableMap<String, UserStatistics> = mutableMapOf()
+    launch {
+        repeat(repos.size) {
+            val lst = channel.receive()
+            lst.forEach {
+                val temp = result.getOrDefault(it.key, UserStatistics(0, setOf(), 0))
+                result[it.key] = UserStatistics(
+                    it.value.commits + temp.commits, it.value.files + temp.files,
+                    it.value.changes + temp.changes
+                )
+            }
+            updateResults(result, it == repos.size - 1)
+        }
+    }
 }
 
