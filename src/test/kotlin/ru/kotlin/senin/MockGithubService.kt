@@ -13,6 +13,9 @@ object MockGithubService : GitHubService {
         perPage: Int
     ): Response<List<Commit>> {
         delay(commitsRequestDelay)
+        if (page > 1) {
+            return Response.success(listOf())
+        }
         return Response.success(commits)
     }
 
