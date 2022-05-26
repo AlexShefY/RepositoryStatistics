@@ -1,7 +1,11 @@
 package ru.kotlin.senin
 
+//import kotlinx.datetime.*
+//import kotlinx.datetime.Clock.*
+//import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.datetime.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.kotlin.senin.GitHubRepositoryStatistics.LoadingStatus.*
@@ -17,6 +21,11 @@ import javax.swing.*
 import javax.swing.table.DefaultTableModel
 import kotlin.coroutines.CoroutineContext
 import kotlin.system.exitProcess
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
+import kotlin.time.toDuration
+
 
 val log: Logger = LoggerFactory.getLogger("AppUI")
 private val defaultInsets = Insets(3, 10, 3, 10)
@@ -316,68 +325,61 @@ fun saveParameters(storedParameters: StoredParameters) {
     }
 }
 
-fun correctDate(date : String) : Boolean {
-    val lst = date.split('T')[0].split('-').joinToString("")
-    return lst >= "20210430"
-}
-
-suspend fun loadResults(
+@OptIn(ExperimentalTime::class)
+suspend fun loadResults (
     service: GitHubService, req: RequestData,
-    updateResults: suspend (Map<String, UserStatistics>, completed: Boolean) -> Unit): Unit = coroutineScope {
+    updateResults: suspend (Map<String, UserStatistics>, completed: Boolean) -> Unit):
+        Unit = coroutineScope {
     var page = 1
     var repos : List<Commit>
     val result: MutableMap<String, UserStatistics> = mutableMapOf()
-    repos = service.getCommits(owner = req.owner, repository = req.repository, page = page).body()?.filter {
-        it.author?.type != "Bot" && it.author != null && correctDate(it.commit.author.date)
+    var currentMoment: Instant = Clock.System.now()
+    currentMoment -= 365.toDuration(DurationUnit.DAYS)
+    val datetimeInSystemZone: LocalDateTime = currentMoment.toLocalDateTime(TimeZone.currentSystemDefault())
+    repos = service.getCommits(owner = req.owner, repository = req.repository,
+        since = datetimeInSystemZone.toString(),
+        page = page).body()?.filter {
+        it.author?.type != "Bot" && it.author != null
     } ?: listOf()
     page++
-    val channel = Channel<List<CommitWithChanges>?> ()
-    launch {
-        var it = 0
-        val listChanges : MutableList<CommitWithChanges> = mutableListOf()
-        while (repos?.size != 0) {
-            repos.forEach { repo ->
+    val channel = Channel<CommitWithChanges?> ()
+    var size = 0
+    val reposes : MutableList<List<Commit>> = mutableListOf()
+    while (repos?.size != 0) {
+        size += repos.size
+        reposes.add(repos)
+        repos = service.getCommits(owner = req.owner, repository = req.repository,
+            since = datetimeInSystemZone.toString(),
+            page = page).body()?.filter {
+            it.author?.type != "Bot" && it.author != null
+        } ?: listOf()
+        page++
+    }
+    reposes.forEach { repos ->
+        repos.forEach { repo ->
+            launch {
                 val changes = service
                     .getChanges(owner = req.owner, repository = req.repository, commitRef = repo.sha)
                     .body()
-                if (changes != null) {
-                    listChanges.add(changes)
-                    if (listChanges.size % 20 == 0) {
-                        channel.send(listChanges)
-                        listChanges.clear()
-                    }
-                }
+                channel.send(changes)
             }
-            page++
-            repos = service.getCommits(owner = req.owner, repository = req.repository, page = page).body()?.filter {
-                it.author?.type != "Bot" && it.author != null
-            } ?: listOf()
         }
-        channel.send(null)
     }
     launch {
-        var commit = channel.receive()
-        var it = 0
-        while (commit != null) {
-            commit.let{ listChanges ->
-                listChanges.forEach {
-                    when (it != null && it.author != null) {
-                        true -> {
-                            val stat = UserStatistics(1, it.files.map { it.filename }.toSet(),
-                                it.files.sumOf { it.changes })
-                            val temp = result.getOrDefault(it.author.login, UserStatistics(0, setOf(), 0))
-                            result[it.author.login] = UserStatistics(
-                                stat.commits + temp.commits, stat.files + temp.files,
-                                stat.changes + temp.changes
-                            )
-                        }
-                    }
+        repeat(size) { idx ->
+            val commit = channel.receive()
+            commit?.let {
+                if (it.author != null) {
+                    val stat = UserStatistics(1, it.files.map { it.filename }.toSet(),
+                        it.files.sumOf { it.changes })
+                    val temp = result.getOrDefault(it.author.login, UserStatistics(0, setOf(), 0))
+                    result[it.author.login] = UserStatistics(
+                        stat.commits + temp.commits, stat.files + temp.files,
+                        stat.changes + temp.changes
+                    )
                 }
             }
-            commit = channel.receive()
-            updateResults(result, commit == null)
-            it++
+            updateResults(result, idx == size - 1)
         }
     }
 }
-

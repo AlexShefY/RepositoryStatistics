@@ -7,16 +7,16 @@ data class TestCommitWithChanges(val timeFromStart: Long, val commit: CommitWith
 
 const val commitsRequestDelay = 1000L
 
-val user1ShortInfo = AuthorInfo("Vasiliy Pupkin", "2020-12-08T21:30:48Z")
+val user1ShortInfo = AuthorInfo("Vasiliy Pupkin", "2021-12-08T21:30:48Z")
 val user1Info = UserInfo("pupkin", 1, "User")
 
-val user2ShortInfo = AuthorInfo("Ivanov Ivan", "2019-12-08T21:30:48Z")
+val user2ShortInfo = AuthorInfo("Ivanov Ivan", "2020-12-08T21:30:48Z")
 val user2Info = UserInfo("ivanov", 2, "User")
 
-val user3ShortInfo = AuthorInfo("github-classroom[bot]", "2020-11-08T21:30:48Z")
+val user3ShortInfo = AuthorInfo("github-classroom[bot]", "2021-11-08T21:30:48Z")
 val user3Info = UserInfo("bot3", 3, "Bot")
 
-val user4ShortInfo = AuthorInfo("Deleted user", "2016-11-08T21:30:48Z")
+val user4ShortInfo = AuthorInfo("Deleted user", "2017-11-08T21:30:48Z")
 
 fun committedByUser1(message: String) = CommitDetails(user1ShortInfo, message)
 fun committedByUser2(message: String) = CommitDetails(user2ShortInfo, message)

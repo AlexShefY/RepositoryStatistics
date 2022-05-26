@@ -15,6 +15,7 @@ repositories {
 dependencies {
 
     val coroutinesVersion: String by project
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$coroutinesVersion")

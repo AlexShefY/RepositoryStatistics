@@ -10,8 +10,6 @@ class Test {
         val startTime = currentTime
         var index = 0
         loadResults(MockGithubService, testRequestData) { results, _ ->
-            println("A")
-            println(index)
             val expected = progressResults[index++]
             val time = currentTime - startTime
          //   assertEquals("Expected result after ${expected.timeFromStart} ms:", expected.timeFromStart, time)
