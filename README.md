@@ -1,56 +1,56 @@
 # GitHub Repository Statistics 
 
-В рамках задания необходимо реализовать GUI приложение для 
-получения данных о коммитах заданного GitHub репозитория.
+As part of the task you need to implement a GUI application to 
+to get data about commits of a given GitHub repository.
 
-## Получение данных 
+## Data retrieval 
 
-Все данные программа должна получать через GitHub API.  
-Для работы с private репозиториями требуется авторизация, 
-для которой нужно получить токен на странице 
+The program must receive all data via the GitHub API.  
+Authorization is required to work with private repositories, 
+for which you need to get a token on the 
 [https://github.com/settings/tokens/new](https://github.com/settings/tokens/new).
-При генерации токена достаточно указать только scope `repo`. Токен нужен только для тестирования,
-после тестирования его можно удалить на странице [https://github.com/settings/tokens/](https://github.com/settings/tokens/).  
+When generating the token, you only need to specify scope `repo`. The token is only needed for testing,
+after testing it can be deleted at [https://github.com/settings/tokens/](https://github.com/settings/tokens/).  
 
-**Не сохраняйте токен в репозитории!**
+**Do not save the token in the repository!**
 
-Запросы с авторизацией должны иметь заголовок `Authorization: Basic <авторизационный токен>`.
-При этом `<авторизационный токен>` получается из логина пользователя и его токена 
-как base64-кодированная строка `<username>:<password>`.
+Queries with authorization must have the header `Authorization: Basic <authorization token>`.
+This `<authorization token>` is derived from the user's login and its token 
+as the base64-encoded string `<username>:<password>`.
 
-#### Получение списка коммитов
+
+#### Getting a list of commits
 
 См. https://docs.github.com/en/rest/commits/commits
 
-#### Получение данных коммита  
+#### Getting commit data  
 
 См. https://docs.github.com/en/rest/commits/commits#get-a-commit
 
-### Требования к приложению
+###  Requirements for the application
 
-Пользователь приложения указывает:
-1. Логин в GitHub для авторизации
-2. Токен для авторизации
-3. URL репозитория (например `https://github.com/Kotlin/kotlinx.coroutines`) 
+The user of the application specifies:
+1. GitHub login for authorization
+2. token for authorization
+Repository URL (for example `https://github.com/Kotlin/kotlinx.coroutines`) 
 
-По этим данным после нажатия на кнопку `Load statistics` приложение должно строить таблицу вида: 
-
+Using this data after pressing the `Load statistics` button, the application must build a table of the form: 
 ```
 Author          Commits                    Files                               Changes
-<Автор коммита> <Суммарное число коммитов> <Суммарное число затронутых файлов> <Суммарное число изменений>
+<Summit author> <Total number of commits> <Total number of affected files> <Total number of changes
 ```
 
-Требования к реализации:
+Implementation requirements:
 
-1. Нужно исключать коммиты, автор которых имел тип `Bot` 
-2. Нужно исключать коммиты, сделанные более 12 месяцев назад 
-3. Результаты в таблице нужно отсортировать по убыванию по числу коммитов  
-4. Если один и тот же файл изменялся в разных коммитах, то считать его нужно один раз. При этом все изменения разных коммитов просто суммируются.
-5. При загрузке данных UI не должен блокироваться
-6. Таблица с результатами должна динамически обновляться по мере поступления данных
-7. Нужно поддержать возможность отмены загрузки (кнопка `Cancel`)
-8. Нужно использовать kotlinx.coroutines   
+1. You need to exclude commits whose author had type `Bot`. 
+2. You need to exclude commits made more than 12 months ago 
+3. The results in the table should be sorted in descending order by number of commits  
+4. If the same file was changed in different commits, you have to count it once. All changes from different commits are just summed up.
+5. When loading data, UI must not be blocked.
+6. The results table must be dynamically updated as the data arrive
+7. Need to support the ability to cancel loading (button `Cancel`)
+8. Need to use kotlinx.coroutines   
 
-## Тесты
+## Tests
 
-Необходимо реализовать тесты проверки корректности результатов с использованием `retrofit-mock`
+We need to implement tests to check the correctness of results using `retrofit-mock`.
